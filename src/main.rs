@@ -5,24 +5,24 @@ fn main() {
 
     // TODO: write a proper parser for the rules
 
-    // t0 = t1 -> t2
-    rules.push(rule!(0, fun!(var!(1), var!(2))));
-    // t2 = t3 -> t4
-    rules.push(rule!(2, fun!(var!(3), var!(4))));
-    // t4 = (t5, t6)
-    rules.push(rule!(4, tup!(var!(5), var!(6))));
-    // t7 = Int
-    rules.push(rule!(7, int!()));
-    // t6 = Bool
-    rules.push(rule!(6, boolean!()));
-    // t1 = t7 -> t5
-    rules.push(rule!(1, fun!(var!(7), var!(5))));
-    // t1 = t8 -> Int
-    rules.push(rule!(1, fun!(var!(8), int!())));
-    // t3 = t8
-    rules.push(rule!(3, var!(8)));
-    // goal is t0
-    let goal_var = 0;
+    // // t0 = t1 -> t2
+    // rules.push(rule!(0, fun!(var!(1), var!(2))));
+    // // t2 = t3 -> t4
+    // rules.push(rule!(2, fun!(var!(3), var!(4))));
+    // // t4 = (t5, t6)
+    // rules.push(rule!(4, tup!(var!(5), var!(6))));
+    // // t7 = Int
+    // rules.push(rule!(7, int!()));
+    // // t6 = Bool
+    // rules.push(rule!(6, boolean!()));
+    // // t1 = t7 -> t5
+    // rules.push(rule!(1, fun!(var!(7), var!(5))));
+    // // t1 = t8 -> Int
+    // rules.push(rule!(1, fun!(var!(8), int!())));
+    // // t3 = t8
+    // rules.push(rule!(3, var!(8)));
+    // // goal is t0
+    // let goal_var = 0;
 
     // // t2 = t7 -> Int
     // rules.push(rule!(2, fun!(var!(7), int!())));
@@ -52,6 +52,45 @@ fn main() {
     // // t6 = Bool
     // rules.push(rule!(6, boolean!()));
     // let goal_var = 0;
+
+    // // t0 = t4 -> t5
+    // rules.push(rule!(0, fun!(var!(4), var!(5))));
+    // // t1 = t2 -> t3 -> t4 -> t5
+    // rules.push(rule!(
+    //     1,
+    //     fun!(var!(2), fun!(var!(3), fun!(var!(4), var!(5))))
+    // ));
+
+    // t0 = t4
+    rules.push(rule!(0, var!(4)));
+    // t1 = t2 -> t3 -> t4
+    rules.push(rule!(1, fun!(var!(2), fun!(var!(3), var!(4)))));
+
+    // t1 = (t13 -> t14) -> (t12 -> t13) -> t12 -> t14
+    rules.push(rule!(
+        1,
+        fun!(
+            fun!(var!(13), var!(14)),
+            fun!(fun!(var!(12), var!(13)), fun!(var!(12), var!(14)))
+        )
+    ));
+    // t2 = (t7 -> t8) -> (t6 -> t7) -> t6 -> t8
+    rules.push(rule!(
+        2,
+        fun!(
+            fun!(var!(7), var!(8)),
+            fun!(fun!(var!(6), var!(7)), fun!(var!(6), var!(8)))
+        )
+    ));
+    // t3 = (t10 -> t11) -> (t9 -> t10) -> t9 -> t11
+    rules.push(rule!(
+        3,
+        fun!(
+            fun!(var!(10), var!(11)),
+            fun!(fun!(var!(9), var!(10)), fun!(var!(9), var!(11)))
+        )
+    ));
+    let goal_var = 0;
 
     for (i, rule) in rules.iter().enumerate() {
         println!("Rule #{}: \x1B[35;1m{rule}\x1B[0m", i + 1);
