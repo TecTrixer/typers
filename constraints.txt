@@ -22,7 +22,7 @@
 // t5 = t9
 // t6 = Bool
 
-// Example from FMFP Final 2019 - currently is WIP
+// Example from FMFP Final 2019
 // t0 = t2 -> t3
 // t1 = (t4 -> t3, t5)
 // t2 = t6 -> t4
@@ -30,6 +30,7 @@
 // t1 = (t8, Bool)
 // t8 = t9 -> t10
 // t9 = t10
+// The answer also includes this, but it leads to a recursive type
 // t2 = t9
 
 // Example from FMFP Exercise Sheet

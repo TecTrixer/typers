@@ -136,6 +136,33 @@ fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
     }
     // TODO: can we just loop here?
     for _ in 0..1000 {
+        // remove simple rules
+        loop {
+            let mut found = false;
+            for i in 0..rules.len() {
+                if let Some((mut from, mut to)) = rules[i].is_simple() {
+                    if from == to {
+                        println!("Error, recursive definition t{from} = t{to}!");
+                        std::process::exit(1);
+                    } else if from < to {
+                        std::mem::swap(&mut to, &mut from);
+                    }
+
+                    println!("Replacing t{from} with t{to}");
+                    rules.swap_remove(i);
+
+                    for rule in rules.iter_mut() {
+                        rule.replace_var(from, to)
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                break;
+            }
+        }
+
         let mut found_new = false;
         'outer: for i in 0..rules.len() {
             for j in i + 1..rules.len() {
@@ -252,6 +279,7 @@ pub enum Type {
     Bool,
     Int,
 }
+// TODO: use *self = new_type instead of returning type
 // return true if detail of type could be increased with the given rules
 fn increase_detail(first: Box<Type>, rules: &Vec<RuleExpr>) -> (Option<usize>, Box<Type>) {
     let mut cpy = first.clone();
@@ -295,6 +323,25 @@ fn increase_detail(first: Box<Type>, rules: &Vec<RuleExpr>) -> (Option<usize>, B
 }
 
 impl Type {
+    fn replace_var(&mut self, from: usize, to: usize) {
+        match self {
+            Type::Function(l, r) => {
+                l.replace_var(from, to);
+                r.replace_var(from, to);
+            }
+            Type::Tuple(l, r) => {
+                l.replace_var(from, to);
+                r.replace_var(from, to);
+            }
+            Type::Var(x) => {
+                if *x == from {
+                    *self = Type::Var(to);
+                }
+            }
+            Type::Bool => (),
+            Type::Int => (),
+        }
+    }
     // return all vars contained in the right side
     fn all_vars(&self) -> HashSet<usize> {
         let mut res = HashSet::new();
@@ -407,6 +454,19 @@ pub struct RuleExpr {
 }
 
 impl RuleExpr {
+    fn is_simple(&self) -> Option<(usize, usize)> {
+        if let Type::Var(r) = *self.rhs {
+            Some((self.var, r))
+        } else {
+            None
+        }
+    }
+    fn replace_var(&mut self, from: usize, to: usize) {
+        if self.var == from {
+            self.var = to;
+        }
+        self.rhs.replace_var(from, to);
+    }
     fn increase_detail(&mut self, rules: &Vec<RuleExpr>) -> Option<usize> {
         let (res, rhs) = increase_detail(self.rhs.clone(), rules);
         self.rhs = rhs;
