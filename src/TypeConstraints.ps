@@ -1,0 +1,24 @@
+var = @ { "t" ~ ASCII_DIGIT+ }
+int = { "Int" }
+bool = { "Bool" }
+generic_type = { var | int | bool }
+
+primary = _{ generic_type | "(" ~ expr ~ ")" }
+atom = _{ tuple | primary }
+tuple = { "(" ~ expr ~ "," ~ expr ~ ")" }
+bin_op = _{ app }
+	app = { "->" }
+
+expr = { atom ~ (bin_op ~ atom)* }
+
+constraint = { var ~ "=" ~ expr }
+system = {
+	SOI
+	~ (NEWLINE* ~ constraint)
+	~ (NEWLINE+ ~ constraint)*
+	~ NEWLINE*
+	~ eoi
+}
+eoi = _{ !ANY }
+WHITESPACE = _{ " " }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY )* ~ NEWLINE }

@@ -1,28 +1,47 @@
+use std::io::Read;
 use std::{collections::HashSet, fmt::Display};
 
+use parser::parse;
+mod parser;
+
 fn main() {
-    let mut rules = vec![];
+    let mut constraints = std::fs::OpenOptions::new()
+        .read(true)
+        .open("constraints.txt")
+        .unwrap();
+    let mut all_constraints = String::new();
+    constraints.read_to_string(&mut all_constraints).unwrap();
+    let rules = match parse(&all_constraints, "constraints.txt") {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    };
+    solve_constraints(rules, 0);
 
-    // TODO: write a proper parser for the rules
+    // let mut rules = vec![];
 
-    // t0 = t1 -> t2
-    rules.push(rule!(0, fun!(var!(1), var!(2))));
-    // t2 = t3 -> t4
-    rules.push(rule!(2, fun!(var!(3), var!(4))));
-    // t4 = (t5, t6)
-    rules.push(rule!(4, tup!(var!(5), var!(6))));
-    // t7 = Int
-    rules.push(rule!(7, int!()));
-    // t6 = Bool
-    rules.push(rule!(6, boolean!()));
-    // t1 = t7 -> t5
-    rules.push(rule!(1, fun!(var!(7), var!(5))));
-    // t1 = t8 -> Int
-    rules.push(rule!(1, fun!(var!(8), int!())));
-    // t3 = t8
-    rules.push(rule!(3, var!(8)));
-    // goal is t0
-    let goal_var = 0;
+    // // t0 = t1 -> t2
+    // rules.push(rule!(0, fun!(var!(1), var!(2))));
+    // // t2 = t3 -> t4
+    // rules.push(rule!(2, fun!(var!(3), var!(4))));
+    // // t4 = (t5, t6)
+    // rules.push(rule!(4, tup!(var!(5), var!(6))));
+    // // t7 = Int
+    // rules.push(rule!(7, int!()));
+    // // t6 = Bool
+    // rules.push(rule!(6, boolean!()));
+    // // t1 = t7 -> t5
+    // rules.push(rule!(1, fun!(var!(7), var!(5))));
+    // // t1 = t8 -> Int
+    // rules.push(rule!(1, fun!(var!(8), int!())));
+    // // t3 = t8
+    // rules.push(rule!(3, var!(8)));
+    // // goal is t0
+    // let goal_var = 0;
+
+    // solve_constraints(rules, goal_var);
 
     // // t2 = t7 -> Int
     // rules.push(rule!(2, fun!(var!(7), int!())));
@@ -91,7 +110,9 @@ fn main() {
     //     )
     // ));
     // let goal_var = 0;
+}
 
+fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
     for (i, rule) in rules.iter().enumerate() {
         println!("Rule #{}: \x1B[35;1m{rule}\x1B[0m", i + 1);
     }
@@ -159,12 +180,17 @@ fn main() {
     let goal_pad = " ".repeat(goal_str.len());
     println!("{goal_str} = \x1B[33;1m{}\x1B[0m", goal_rule.rhs);
     let mut strings = vec![];
-    // TODO: make sure there is no infinite loop here
+    // TODO: make sure there is no infinite loop here, add some rule application cycle detection here, e.g. t0 = t0 is infinite cycle
+    let mut count = 0;
     while let Some(rule) = goal_rule.increase_detail(&rules) {
+        count += 1;
         strings.push((
             format!("{goal_pad} = \x1B[33;1m{}\x1B[0m", goal_rule.rhs),
             rule,
         ));
+        if count > 15 {
+            break;
+        }
     }
 
     // TODO: make better pretty printing here
@@ -189,7 +215,7 @@ trait RuleInfo {
     fn all_vars_rhs(&self) -> HashSet<usize>;
 }
 
-impl RuleInfo for Vec<Rule> {
+impl RuleInfo for Vec<RuleExpr> {
     fn all_vars_lhs(&self) -> HashSet<usize> {
         let mut res = HashSet::new();
         for rule in self {
@@ -219,7 +245,7 @@ impl Type {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
-enum Type {
+pub enum Type {
     Function(Box<Type>, Box<Type>),
     Tuple(Box<Type>, Box<Type>),
     Var(usize),
@@ -227,7 +253,7 @@ enum Type {
     Int,
 }
 // return true if detail of type could be increased with the given rules
-fn increase_detail(first: Box<Type>, rules: &Vec<Rule>) -> (Option<usize>, Box<Type>) {
+fn increase_detail(first: Box<Type>, rules: &Vec<RuleExpr>) -> (Option<usize>, Box<Type>) {
     let mut cpy = first.clone();
     (
         match *first {
@@ -290,7 +316,7 @@ impl Type {
         res
     }
     // Take in two types and then return
-    fn compare_types(&self, other: &Type) -> Result<Vec<Rule>, ()> {
+    fn compare_types(&self, other: &Type) -> Result<Vec<RuleExpr>, ()> {
         match &self {
             Type::Function(sleft, sright) => match other {
                 Type::Function(oleft, oright) => {
@@ -348,7 +374,7 @@ impl Display for Type {
                     format!("{t1}")
                 };
                 let t2_out = if t2.is_complex() {
-                    format!("({t2})")
+                    format!("{t2}")
                 } else {
                     format!("{t2}")
                 };
@@ -375,20 +401,20 @@ impl Display for Type {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
-struct Rule {
+pub struct RuleExpr {
     var: usize,
     rhs: Box<Type>,
 }
 
-impl Rule {
-    fn increase_detail(&mut self, rules: &Vec<Rule>) -> Option<usize> {
+impl RuleExpr {
+    fn increase_detail(&mut self, rules: &Vec<RuleExpr>) -> Option<usize> {
         let (res, rhs) = increase_detail(self.rhs.clone(), rules);
         self.rhs = rhs;
         res
     }
 }
 
-impl RuleInfo for Rule {
+impl RuleInfo for RuleExpr {
     fn all_vars_lhs(&self) -> HashSet<usize> {
         HashSet::from([self.var])
     }
@@ -397,7 +423,7 @@ impl RuleInfo for Rule {
     }
 }
 
-impl Display for Rule {
+impl Display for RuleExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "t{} = {}", self.var, self.rhs)
     }
@@ -437,7 +463,7 @@ mod helper {
     #[macro_export]
     macro_rules! rule {
         ($var:expr, $rhs:expr) => {
-            Rule {
+            RuleExpr {
                 var: $var,
                 rhs: $rhs,
             }
