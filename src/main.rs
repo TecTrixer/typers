@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::io::Read;
 
-use parser::parse;
+use parser::TypeConstraintParser;
 use rules::{RuleExpr, RuleInfo};
 mod macros;
 mod parser;
@@ -14,7 +14,7 @@ fn main() {
         .unwrap();
     let mut all_constraints = String::new();
     constraints.read_to_string(&mut all_constraints).unwrap();
-    let rules = match parse(&all_constraints, "constraints.txt") {
+    let rules = match TypeConstraintParser::get_constraints(&all_constraints, "constraints.txt") {
         Ok(x) => x,
         Err(e) => {
             eprintln!("{e}");
