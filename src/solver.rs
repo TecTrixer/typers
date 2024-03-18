@@ -18,6 +18,7 @@ pub fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
     accumulate_constraints(&mut rules);
 
     // TODO: make sure there is no infinite loop here, add some rule application cycle detection here, e.g. t0 = t0 is infinite cycle
+    println!("No cycle found in constraints ... \n");
 
     println!("Substituting constraints ...\n");
     let final_rule = substitute_constraints(&mut rules, goal_var);
@@ -28,11 +29,8 @@ pub fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
 
 /// Print the given rules
 fn print_rules(rules: &Vec<RuleExpr>) {
-    for (i, rule) in rules.iter().enumerate() {
-        println!(
-            "{SECTION_PADDING}Rule #{}: {START_RULE}{rule}{CLEAR}",
-            i + 1
-        );
+    for rule in rules {
+        println!("{SECTION_PADDING}{START_RULE}{rule}{CLEAR}");
     }
     println!("");
 }
@@ -62,6 +60,7 @@ fn print_variables(rules: &Vec<RuleExpr>) {
 /// Remove all rules of the form `tX = tY` by replacing `X` with `Y` in all rules (where `X` < `Y`)
 /// Assumes that the goal variable has the lowest ID, since otherwise it might replace it
 fn remove_simple_rules(rules: &mut Vec<RuleExpr>) {
+    let mut found_any = false;
     loop {
         let mut found = false;
         for i in 0..rules.len() {
@@ -80,6 +79,7 @@ fn remove_simple_rules(rules: &mut Vec<RuleExpr>) {
                     rule.replace_var(from, to)
                 }
                 found = true;
+                found_any = true;
                 break;
             }
         }
@@ -87,7 +87,9 @@ fn remove_simple_rules(rules: &mut Vec<RuleExpr>) {
             break;
         }
     }
-    println!("");
+    if found_any {
+        println!("");
+    }
 }
 
 /// Accumulate constraints by comparing rules with the same left hand side and replacing variables which are equal
@@ -106,7 +108,7 @@ fn accumulate_constraints(rules: &mut Vec<RuleExpr>) {
                 // Get all new constraints by comparing the rules
                 if let Ok(new_rules) = rules[i].compare_rules(&rules[j]) {
                     println!(
-                        "{SECTION_PADDING}By comparing {START_RULE}{}{CLEAR} and {START_RULE}{}{CLEAR}, these new rules have been found:\n",
+                        "{SECTION_PADDING}Comparing these rules\n{SECTION_PADDING}{SECTION_PADDING}{START_RULE}{}{CLEAR}\n{SECTION_PADDING}{SECTION_PADDING}{START_RULE}{}{CLEAR}\n{SECTION_PADDING}These new rules have been found:",
                         rules[i], rules[j]
                     );
                     rules.swap_remove(j);
