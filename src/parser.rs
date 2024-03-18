@@ -1,4 +1,8 @@
-use crate::*;
+use crate::{
+    boolean, fun, int, rule,
+    rules::{RuleExpr, TypeExpr},
+    tup, var,
+};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -54,7 +58,7 @@ fn parse_var(pair: Pair<Rule>) -> usize {
     num
 }
 
-fn parse_expr(mut pairs: Pairs<Rule>) -> Box<Type> {
+fn parse_expr(mut pairs: Pairs<Rule>) -> Box<TypeExpr> {
     let first_atom = parse_atom(pairs.next().unwrap());
     if let None = pairs.next() {
         return first_atom;
@@ -63,7 +67,7 @@ fn parse_expr(mut pairs: Pairs<Rule>) -> Box<Type> {
     fun!(first_atom, second_atom)
 }
 
-fn parse_atom(pair: Pair<Rule>) -> Box<Type> {
+fn parse_atom(pair: Pair<Rule>) -> Box<TypeExpr> {
     match pair.as_rule() {
         Rule::generic_type => parse_generic_type(pair.into_inner()),
         Rule::expr => parse_expr(pair.into_inner()),
@@ -72,7 +76,7 @@ fn parse_atom(pair: Pair<Rule>) -> Box<Type> {
     }
 }
 
-fn parse_generic_type(mut pairs: Pairs<Rule>) -> Box<Type> {
+fn parse_generic_type(mut pairs: Pairs<Rule>) -> Box<TypeExpr> {
     let pair = pairs.next().unwrap();
     match pair.as_rule() {
         Rule::int => int!(),
@@ -82,7 +86,7 @@ fn parse_generic_type(mut pairs: Pairs<Rule>) -> Box<Type> {
     }
 }
 
-fn parse_tuple(mut pairs: Pairs<Rule>) -> Box<Type> {
+fn parse_tuple(mut pairs: Pairs<Rule>) -> Box<TypeExpr> {
     let first = parse_expr(pairs.next().unwrap().into_inner());
     let second = parse_expr(pairs.next().unwrap().into_inner());
     tup!(first, second)
