@@ -23,7 +23,7 @@ pub fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
     println!("Substituting constraints ...\n");
     let final_rule = substitute_constraints(&mut rules, goal_var);
 
-    println!("All details have been increased, this is the most general type:\n");
+    println!("This is the most general type:\n");
     print_result(&final_rule);
 }
 
