@@ -2,6 +2,30 @@
 
 This is a tiny Mini-Haskell type constraint solver.
 
+## Example
+
+Assuming you have the following function and you want to find out its type:
+```haskell
+(\x y -> iszero ((snd y) (x y))) (\x -> fst x)
+```
+You can apply the rules for Mini-Haskell type derivation and you will have the following constraints, store them in a file called `constraints.txt`:
+
+```
+t0 = t5 -> t6
+t1 = t2 -> t3
+t1 = t9 -> t7
+t2 = (t3, t4)
+t5 = (t8, t7 -> Int)
+t5 = t9
+t6 = Bool
+```
+
+Then `typers` can solve the type constraint system:
+
+<p align="center">
+  <img src="example.png" width="100%" alt="example cli execution" title="Example">
+</p>
+
 ## Installation
 
 You can either clone the repository and build it yourself or you can use cargo directly (recommended):
