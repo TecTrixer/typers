@@ -1,5 +1,5 @@
 use crate::rules::{RuleExpr, RuleInfo};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet, VecDeque};
 const START_RULE: &str = "\x1B[35;1m"; // ANSI sequence for purple and bold
 const START_VAR: &str = "\x1B[31;1m"; // ANSI sequence for red and bold
 const ERROR: &str = "\x1B[31;1m[ERROR]\x1B[0m"; // ANSI sequence for "[ERROR]" in red and bold
@@ -17,7 +17,7 @@ pub fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
     println!("Accumulating constraints ...\n");
     accumulate_constraints(&mut rules);
 
-    // TODO: make sure there is no infinite loop here, add some rule application cycle detection here, e.g. t0 = t0 is infinite cycle
+    check_cycles(&rules);
     println!("No cycle found in constraints ... \n");
 
     println!("Substituting constraints ...\n");
@@ -25,6 +25,52 @@ pub fn solve_constraints(mut rules: Vec<RuleExpr>, goal_var: usize) {
 
     println!("All details have been increased, this is the most general type:\n");
     print_result(&final_rule);
+}
+
+/// Checks if the rules contain any cycle, assumes that all left hand sides are unique, uses topological sorting
+fn check_cycles(rules: &Vec<RuleExpr>) {
+    // Build graph
+    let mut edge_list: HashMap<usize, HashSet<usize>> = HashMap::new();
+    let mut in_degree: HashMap<usize, usize> = HashMap::new();
+    // Build edge_list and in_degree
+    for rule in rules {
+        let rhs = rule.all_vars_rhs();
+        in_degree.entry(rule.var).or_insert(0);
+        for v in rhs.iter() {
+            in_degree.entry(*v).and_modify(|x| *x += 1).or_insert(1);
+        }
+        edge_list.insert(rule.var, rule.all_vars_rhs());
+    }
+
+    // Enqueue all zero in_degree nodes
+    let mut queue = VecDeque::new();
+    for (key, val) in in_degree.iter() {
+        if *val == 0 {
+            queue.push_back(*key);
+        }
+    }
+
+    // BFS traversal
+    let mut num_visited = 0;
+    while let Some(u) = queue.pop_front() {
+        num_visited += 1;
+
+        // adjust in_degree of next nodes
+        if let Some(edges) = edge_list.get(&u) {
+            for v in edges {
+                let degree = in_degree.get_mut(v).unwrap();
+                *degree -= 1;
+                // if in_degree is 0 we need to enqueue the node
+                if *degree == 0 {
+                    queue.push_back(*v);
+                }
+            }
+        }
+    }
+    if num_visited != in_degree.len() {
+        eprintln!("{ERROR}: detected cycle in constraints, cannot proceed ...");
+        std::process::exit(1);
+    }
 }
 
 /// Print the given rules
@@ -48,10 +94,11 @@ fn print_variables(rules: &Vec<RuleExpr>) {
     for (idx, var) in all_vars_vec.into_iter().enumerate() {
         if idx == 0 {
             print!("{SECTION_PADDING}{{{START_VAR}t{var}{CLEAR}");
-        } else if idx == all_vars_len - 1 {
-            print!(", {START_VAR}t{var}{CLEAR}}}\n");
         } else {
             print!(", {START_VAR}t{var}{CLEAR}")
+        }
+        if idx == all_vars_len - 1 {
+            print!("}}\n");
         }
     }
     println!("");
@@ -66,7 +113,7 @@ fn remove_simple_rules(rules: &mut Vec<RuleExpr>) {
         for i in 0..rules.len() {
             if let Some((mut from, mut to)) = rules[i].is_simple() {
                 if from == to {
-                    eprintln!("{ERROR}: recursive definition t{from} = t{to}!");
+                    eprintln!("{ERROR}: recursive definition {START_RULE}t{from} = t{to}{CLEAR}!");
                     std::process::exit(1);
                 } else if from < to {
                     std::mem::swap(&mut to, &mut from);
@@ -164,9 +211,9 @@ fn substitute_constraints(rules: &mut Vec<RuleExpr>, goal_var: usize) -> RuleExp
             rule,
         ));
         // catch infinite cycles, should have already been avoided though!
-        if count > 30 {
+        if count > 300 {
             eprintln!(
-                "{ERROR}: you probably have an infinite cycle or your rule is really complicated"
+                "\n{ERROR}: either your constraint system is very complicated or there was an undetected cycle in the constraints"
             );
             std::process::exit(1);
         }
